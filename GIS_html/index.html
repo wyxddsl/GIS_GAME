@@ -14,17 +14,25 @@
         .login-box input { padding: 10px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 15px; width: 80%; }
         .login-box button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
 
-        /* 侧边栏 */
-        aside { width: 250px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        /* 修改：侧边栏改为全屏遮罩层形式，默认隐藏 */
+        aside { width: 100%; background: var(--surface); display: none; flex-direction: column; flex: 1; height: 100vh; }
+        .aside-header { padding: 15px; background: #f8fafc; border-bottom: 1px solid var(--border); display: flex; align-items: center; }
+        .back-btn { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        
         .tab-btn { padding: 15px; text-align: left; border: none; background: none; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 16px; font-weight: bold; }
         .tab-btn:hover, .tab-btn.active { background: #eff6ff; color: var(--primary); }
         .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; }
         .tab-content.active { display: block; }
         .list-item { background: var(--bg); margin-bottom: 10px; padding: 10px; border-radius: 6px; font-size: 14px; }
 
-        /* 主体内容 */
-        main { flex: 1; display: flex; flex-direction: column; position: relative;}
+        /* 主体内容区，默认占满全屏 */
+        main { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; }
         header { background: var(--surface); padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        
+        /* 修改：顶部左侧的菜单按钮和名字布局 */
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .hamburger { background: none; border: none; font-size: 26px; cursor: pointer; padding: 0; color: var(--primary); line-height: 1; margin-top: -2px;}
+        
         .status-badge { padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: bold; background: #ef4444; color: white; }
         .status-badge.online { background: #10b981; }
         
@@ -51,7 +59,11 @@
         </div>
     </div>
 
-    <aside>
+    <aside id="sidebar">
+        <div class="aside-header">
+            <button class="back-btn" onclick="toggleSidebar(false)">🔙 返回主界面</button>
+            <h3 style="margin: 0 0 0 15px;">玩家信息</h3>
+        </div>
         <button class="tab-btn active" onclick="switchTab('tab-rank')">🏆 积分排行</button>
         <button class="tab-btn" onclick="switchTab('tab-ach')">🎖️ 我的成就</button>
         <button class="tab-btn" onclick="switchTab('tab-tr')">💎 我的宝藏</button>
@@ -61,9 +73,12 @@
         <div id="tab-tr" class="tab-content">暂无宝藏</div>
     </aside>
 
-    <main>
+    <main id="main-view">
         <header>
-            <div id="player-name-display"><strong>玩家: 未知</strong></div>
+            <div class="header-left">
+                <button class="hamburger" onclick="toggleSidebar(true)">☰</button>
+                <div id="player-name-display"><strong>未知</strong></div>
+            </div>
             <div id="connection-status" class="status-badge">离线</div>
         </header>
         <div id="text-feed">
@@ -82,19 +97,30 @@
     </main>
 
     <script>
-        const WS_URL = 'ws://127.0.0.1:8765'; // 本地测试，上线请改回 cpolar 地址
+        // const WS_URL = 'ws://127.0.0.1:8765'; // 本地测试，上线请改回 cpolar 地址
+        const WS_URL = 'wss://4be482bd.r39.cpolar.top'; // 上线地址 8745 端口
         let ws;
         let username = "";
         let gpsInterval;
         let currentQuizId = null;
-
-        function startGame() {
+-        function startGame() {
             const input = document.getElementById('username-input').value.trim();
             if (!input) { alert("用户名不能为空"); return; }
             username = input;
             document.getElementById('player-name-display').innerHTML = `<strong>玩家: ${username}</strong>`;
             document.getElementById('login-overlay').style.display = 'none';
             connectWebSocket();
+        }
+
+        // 新增：侧边栏切换逻辑
+        function toggleSidebar(show) {
+            if(show) {
+                document.getElementById('sidebar').style.display = 'flex';
+                document.getElementById('main-view').style.display = 'none';
+            } else {
+                document.getElementById('sidebar').style.display = 'none';
+                document.getElementById('main-view').style.display = 'flex';
+            }
         }
 
         function switchTab(tabId) {

@@ -53,7 +53,10 @@ async def send_json(writer, payload_dict):
     msg_bytes = f"{json_str}\n".encode('utf-8')
     writer.write(msg_bytes)
     await writer.drain()
-    logging.info(f"📤 广播消息: {payload_dict.get('msg_type') or payload_dict.get('type')}")
+    
+    # 避免被高频的高频 GPS 数据刷满日志
+    if payload_dict.get('msg_type') != 'C2S_POS':
+        logging.info(f"📤 广播消息: {payload_dict.get('msg_type') or payload_dict.get('type')}")
 
 async def handle_intermediary(reader, writer):
     addr = writer.get_extra_info('peername')
@@ -71,8 +74,10 @@ async def handle_intermediary(reader, writer):
 
             # 处理来自中继的客户端消息
             if msg_type == 'C2S_POS':
-                # 记录位置但不刷屏日志
+                # 记录位置
                 players_db[uid] = msg.get('data', {})
+                # 【关键修复】将位置信息广播回去，以便 GM 端（作为WS客户端）能够收到数据
+                await send_json(writer, msg)
                 
             elif msg_type == 'C2S_QUIZ_RESULT':
                 logging.info(f"📝 收到玩家 [{uid}] 的答题结果: {msg['data']}")
