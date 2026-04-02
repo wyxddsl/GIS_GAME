@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GIS 玩家端</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 0; background: var(--bg); color: var(--text);
+            display: flex; flex-direction: column; height: 100vh;
+        }
+        header {
+            background: var(--surface); padding: 15px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .status-badge {
+            padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: bold;
+            background: #ef4444; color: white;
+        }
+        .status-badge.online { background: #10b981; }
+        
+        main {
+            flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px;
+        }
+        .card {
+            background: var(--surface); border-radius: 8px; padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h2 { margin: 0 0 10px 0; font-size: 16px; color: var(--primary); }
+        
+        #text-feed p { margin: 5px 0; font-size: 14px; border-bottom: 1px solid var(--border); padding-bottom: 5px;}
+        #text-feed p:last-child { border-bottom: none; }
+        
+        #image-container img {
+            width: 100%; border-radius: 4px; display: none; margin-top: 10px;
+        }
+        .gps-data { font-family: monospace; font-size: 12px; color: #64748b;}
+    </style>
+</head>
+<body>
+
+    <header>
+        <div><strong>GIS 玩家端</strong></div>
+        <div id="connection-status" class="status-badge">离线</div>
+    </header>
+
+    <main>
+        <div class="card">
+            <h2>位置数据流</h2>
+            <div id="gps-status" class="gps-data">等待 GPS 信号...</div>
+        </div>
+
+        <div class="card">
+            <h2>服务器消息</h2>
+            <div id="text-feed"></div>
+            <div id="image-container">
+                <img id="server-image" src="" alt="接收到的地图/图像">
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // const WS_URL = 'wss://22720ae7.r39.cpolar.top'; // 替换为你的 cpolar/SakuraFrp 公网 wss 地址
+        const WS_URL = 'wss://44173f43.r39.cpolar.top';
+        // const WS_URL = 'ws://127.0.0.1:8765';
+        const clientId = 'Mobile_' + Math.floor(Math.random() * 10000); 
+        
+        let ws;
+        let gpsInterval;
+
+        const statusBadge = document.getElementById('connection-status');
+        const gpsStatus = document.getElementById('gps-status');
+        const textFeed = document.getElementById('text-feed');
+        const serverImage = document.getElementById('server-image');
+
+        function connectWebSocket() {
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                statusBadge.textContent = '在线';
+                statusBadge.classList.add('online');
+                startGPSStream();
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.text) {
+                        const p = document.createElement('p');
+                        p.textContent = data.text;
+                        textFeed.prepend(p);
+                    }
+                    
+                    if (data.image) {
+                        serverImage.src = data.image.startsWith('data:image') 
+                            ? data.image 
+                            : `data:image/jpeg;base64,${data.image}`;
+                        serverImage.style.display = 'block';
+                    }
+                } catch (e) {
+                    console.error("解析消息失败:", e);
+                }
+            };
+
+            ws.onclose = () => {
+                statusBadge.textContent = '离线';
+                statusBadge.classList.remove('online');
+                stopGPSStream();
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        function startGPSStream() {
+            if (!navigator.geolocation) {
+                gpsStatus.textContent = "你的浏览器不支持 GPS 定位。";
+                return;
+            }
+
+            gpsInterval = setInterval(() => {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const payload = {
+                            client_id: clientId,
+                            type: 'gps',
+                            lat: position.coords.latitude,
+                            lon: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        };
+                        gpsStatus.textContent = `Lat: ${payload.lat.toFixed(5)}, Lon: ${payload.lon.toFixed(5)}`;
+                        
+                        if (ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify(payload));
+                        }
+                    },
+                    (error) => {
+                        gpsStatus.textContent = `GPS 错误: ${error.message}`;
+                    },
+                    { enableHighAccuracy: true }
+                );
+            }, 5000);
+        }
+
+        function stopGPSStream() {
+            if (gpsInterval) clearInterval(gpsInterval);
+        }
+
+        connectWebSocket();
+    </script>
+</body>
+</html>
+
+<!-- python -m http.server 8000 -->
