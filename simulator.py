@@ -2,85 +2,116 @@ import asyncio
 import json
 import logging
 
-# 配置日志输出格式
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - [模拟主干] - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - [C# 模拟服务器] - %(message)s')
 
 HOST = '127.0.0.1'
 PORT = 9010
 
-# 这是一个 1x1 像素的红色 PNG 图片的纯 Base64 编码
-DUMMY_BASE64_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+# 模拟数据库状态
+players_db = {}
+
+async def test_flow_sequence(writer):
+    """自动化测试流程，依次下发各类事件"""
+    logging.info("🚀 开始执行 GM 测试流程...")
+    
+    # 1. 区域状态推送
+    await send_json(writer, {
+        "msg_type": "S2C_AREA",
+        "data": { "area_id": 1, "area_name": "同济大学图书馆", "occupy_status": 0, "quiz_ids": "101", "tr_point_ids": "201" }
+    })
+    await asyncio.sleep(2)
+
+    # 2. 宝藏推送
+    await send_json(writer, {
+        "msg_type": "S2C_TREASURE",
+        "data": { "tr_id": 505, "content": "获得露天宝藏：神秘的测绘仪器", "score": 20, "ability": 0 }
+    })
+    await asyncio.sleep(2)
+
+    # 3. 成就推送
+    await send_json(writer, {
+        "msg_type": "S2C_ACH",
+        "data": { "name": "初出茅庐", "desc": "完成第一次坐标打卡", "img": "ach01.png" }
+    })
+    await asyncio.sleep(2)
+
+    # 4. 题目发送
+    await send_json(writer, {
+        "type": "QUIZ_DATA",
+        "data": {
+            "total": 1, "this_num": 1, "qid": 101, "mode": "single_choice",
+            "content": "以下哪种数据结构通常用于表示连续的地表高程？",
+            "option_count": 4,
+            "options": ["矢量多边形", "栅格(Raster/DEM)", "拓扑网络", "点云"],
+            "answer_key": "1"
+        }
+    })
+
+async def send_json(writer, payload_dict):
+    """序列化并发送 JSON"""
+    json_str = json.dumps(payload_dict, ensure_ascii=False)
+    msg_bytes = f"{json_str}\n".encode('utf-8')
+    writer.write(msg_bytes)
+    await writer.drain()
+    logging.info(f"📤 广播消息: {payload_dict.get('msg_type') or payload_dict.get('type')}")
 
 async def handle_intermediary(reader, writer):
     addr = writer.get_extra_info('peername')
-    logging.info(f"中继脚本已成功连接: {addr}")
+    logging.info(f"✅ 中继脚本(trans.py)已连接: {addr}")
 
-    # 任务 1：不断读取来自移动端的 GPS 数据
-    async def read_loop():
-        while True:
-            try:
-                # 读取以 \n 结尾的整行数据
-                data = await reader.readline()
-                if not data:
-                    break
-                logging.info(f"收到上行 GPS 数据: {data.decode('utf-8').strip()}")
-            except Exception as e:
-                logging.error(f"读取数据流异常: {e}")
-                break
+    while True:
+        try:
+            data = await reader.readline()
+            if not data: break
+            
+            payload = data.decode('utf-8').strip()
+            msg = json.loads(payload)
+            msg_type = msg.get('msg_type')
+            uid = msg.get('uid', 'Unknown')
 
-    # 任务 2：定时向移动端下发 JSON 指令与图片
-    async def write_loop():
-        counter = 1
-        while True:
-            try:
-                await asyncio.sleep(1000) # 每 10 秒触发一次发送
+            # 处理来自中继的客户端消息
+            if msg_type == 'C2S_POS':
+                # 记录位置但不刷屏日志
+                players_db[uid] = msg.get('data', {})
                 
-                payload = {
-                    "text": f"系统广播: 这是来自模拟服务器的测试消息 #{counter}",
-                    "image": DUMMY_BASE64_IMAGE
-                }
-                
-                # 序列化为 JSON -> 添加换行符 -> 强制 UTF-8 编码
-                json_str = json.dumps(payload)
-                msg_bytes = f"{json_str}\n".encode('utf-8')
-                
-                writer.write(msg_bytes)
-                await writer.drain() # 确保数据推送到底层 socket
-                
-                logging.info(f"已下发包含图片的测试消息 #{counter}，大小: {len(msg_bytes)} 字节")
-                counter += 1
-            except Exception as e:
-                logging.error(f"发送数据流异常: {e}")
-                break
+            elif msg_type == 'C2S_QUIZ_RESULT':
+                logging.info(f"📝 收到玩家 [{uid}] 的答题结果: {msg['data']}")
+                # 模拟加分并推送排行榜
+                await send_json(writer, {"msg_type": "TEXT_MSG", "text": f"玩家 {uid} 答题成功！积分 +50"})
+                await asyncio.sleep(1)
+                await send_json(writer, {
+                    "type": "RANKING_LIST",
+                    "data": [
+                        {"rank": 1, "uid": uid, "score": 2550},
+                        {"rank": 2, "uid": "User_B", "score": 2100}
+                    ]
+                })
 
-    # 并发执行读和写两个循环
-    read_task = asyncio.create_task(read_loop())
-    write_task = asyncio.create_task(write_loop())
-    
-    # 只要其中一个任务断开，就结束连接
-    await asyncio.wait([read_task, write_task], return_when=asyncio.FIRST_COMPLETED)
-    
-    logging.info(f"中继脚本已断开连接: {addr}")
+            elif msg_type == 'GM_CMD':
+                command = msg.get('command')
+                if command == 'START_TEST':
+                    asyncio.create_task(test_flow_sequence(writer))
+                elif command == 'STOP_GAME':
+                    await send_json(writer, {"msg_type": "TEXT_MSG", "text": "⚠️ 游戏已由 GM 终止！"})
+
+        except json.JSONDecodeError:
+            logging.warning("收到非 JSON 格式数据")
+        except Exception as e:
+            logging.error(f"连接异常: {e}")
+            break
+
+    logging.info("❌ 中继脚本已断开")
     writer.close()
     await writer.wait_closed()
 
 async def main():
     server = await asyncio.start_server(handle_intermediary, HOST, PORT)
-    addrs = ', '.join(str(sock.getsockname()) for sock in server.sockets)
-    logging.info(f"✅ 模拟 C# 服务器启动成功，正在监听 {addrs}")
-
+    logging.info(f"🟢 C# 核心逻辑模拟器启动，监听 {PORT} 端口")
     async with server:
         await server.serve_forever()
 
 if __name__ == '__main__':
-    # 注意：如果你还在 Jupyter Notebook 里运行，请记得加上 nest_asyncio.apply()
-    # 或者把下面几行改成 await main()
-    import sys
-    if 'ipykernel' in sys.modules:
-        import nest_asyncio
-        nest_asyncio.apply()
-        
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("模拟服务器已手动关闭")
+        logging.info("服务器关闭")

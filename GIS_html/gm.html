@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>GIS 游戏 GM 控制台</title>
+    <style>
+        body { font-family: sans-serif; background: #1e1e1e; color: #fff; padding: 20px; }
+        .panel { background: #2d2d2d; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        button { background: #0ea5e9; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-right: 10px; font-weight: bold;}
+        button.danger { background: #ef4444; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #444; }
+    </style>
+</head>
+<body>
+    <h1>🎮 GM 控制台</h1>
+    
+    <div class="panel">
+        <h2>流程控制</h2>
+        <button onclick="sendGMCmd('START_TEST')">▶️ 启动一键测试流程 (下发成就/宝藏/题目)</button>
+        <button class="danger" onclick="sendGMCmd('STOP_GAME')">⏹️ 终止游戏</button>
+    </div>
+
+    <div class="panel">
+        <h2>📡 在线玩家状态监测</h2>
+        <table>
+            <thead><tr><th>用户名</th><th>最新经度 (X)</th><th>最新纬度 (Y)</th><th>状态</th></tr></thead>
+            <tbody id="player-list"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const WS_URL = 'ws://127.0.0.1:8765';
+        let ws = new WebSocket(WS_URL);
+        let players = {};
+
+        ws.onopen = () => { console.log("GM 已连接"); };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            // 监听玩家的位置同步来更新在线列表
+            if(data.msg_type === 'C2S_POS' && data.uid) {
+                players[data.uid] = data.data;
+                updateTable();
+            }
+        };
+
+        function sendGMCmd(cmd) {
+            ws.send(JSON.stringify({ uid: "GM_ADMIN", msg_type: "GM_CMD", command: cmd }));
+            alert("指令已下发！");
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('player-list');
+            tbody.innerHTML = '';
+            for(let uid in players) {
+                const pos = players[uid];
+                tbody.innerHTML += `<tr><td>${uid}</td><td>${pos.x.toFixed(5)}</td><td>${pos.y.toFixed(5)}</td><td style="color:#10b981">在线</td></tr>`;
+            }
+        }
+    </script>
+</body>
+</html>

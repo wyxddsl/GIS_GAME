@@ -5,157 +5,228 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GIS 玩家端</title>
     <style>
-        :root {
-            --primary: #2563eb;
-            --bg: #f8fafc;
-            --surface: #ffffff;
-            --text: #0f172a;
-            --border: #e2e8f0;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0; padding: 0; background: var(--bg); color: var(--text);
-            display: flex; flex-direction: column; height: 100vh;
-        }
-        header {
-            background: var(--surface); padding: 15px; border-bottom: 1px solid var(--border);
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .status-badge {
-            padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: bold;
-            background: #ef4444; color: white;
-        }
+        :root { --primary: #2563eb; --bg: #f1f5f9; --surface: #ffffff; --text: #1e293b; --border: #e2e8f0; }
+        body { font-family: system-ui, sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
+        
+        /* 登录遮罩 */
+        #login-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .login-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
+        .login-box input { padding: 10px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 15px; width: 80%; }
+        .login-box button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
+
+        /* 侧边栏 */
+        aside { width: 250px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .tab-btn { padding: 15px; text-align: left; border: none; background: none; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 16px; font-weight: bold; }
+        .tab-btn:hover, .tab-btn.active { background: #eff6ff; color: var(--primary); }
+        .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; }
+        .tab-content.active { display: block; }
+        .list-item { background: var(--bg); margin-bottom: 10px; padding: 10px; border-radius: 6px; font-size: 14px; }
+
+        /* 主体内容 */
+        main { flex: 1; display: flex; flex-direction: column; position: relative;}
+        header { background: var(--surface); padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .status-badge { padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: bold; background: #ef4444; color: white; }
         .status-badge.online { background: #10b981; }
         
-        main {
-            flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 15px;
-        }
-        .card {
-            background: var(--surface); border-radius: 8px; padding: 15px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        h2 { margin: 0 0 10px 0; font-size: 16px; color: var(--primary); }
-        
-        #text-feed p { margin: 5px 0; font-size: 14px; border-bottom: 1px solid var(--border); padding-bottom: 5px;}
-        #text-feed p:last-child { border-bottom: none; }
-        
-        #image-container img {
-            width: 100%; border-radius: 4px; display: none; margin-top: 10px;
-        }
-        .gps-data { font-family: monospace; font-size: 12px; color: #64748b;}
+        #text-feed { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg-bubble { background: var(--surface); padding: 12px 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 80%; }
+        .msg-bubble.sys { background: #e0f2fe; color: #0369a1; border-left: 4px solid #0ea5e9; }
+
+        /* 答题弹窗 */
+        #quiz-modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; width: 80%; max-width: 400px; padding: 20px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); display: none; z-index: 100; border: 2px solid var(--primary); }
+        .quiz-header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 15px; color: var(--primary); }
+        .quiz-option { display: block; margin: 10px 0; padding: 10px; background: var(--bg); border-radius: 6px; cursor: pointer; border: 1px solid transparent;}
+        .quiz-option:hover { border-color: var(--primary); }
+        .quiz-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 6px; margin-top: 15px; cursor: pointer; font-weight: bold;}
     </style>
 </head>
 <body>
 
-    <header>
-        <div><strong>GIS 玩家端</strong></div>
-        <div id="connection-status" class="status-badge">离线</div>
-    </header>
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2>欢迎来到 GIS 游戏</h2>
+            <input type="text" id="username-input" placeholder="请输入你的用户名" />
+            <br>
+            <button onclick="startGame()">进入游戏</button>
+        </div>
+    </div>
+
+    <aside>
+        <button class="tab-btn active" onclick="switchTab('tab-rank')">🏆 积分排行</button>
+        <button class="tab-btn" onclick="switchTab('tab-ach')">🎖️ 我的成就</button>
+        <button class="tab-btn" onclick="switchTab('tab-tr')">💎 我的宝藏</button>
+        
+        <div id="tab-rank" class="tab-content active">暂无数据</div>
+        <div id="tab-ach" class="tab-content">暂无成就</div>
+        <div id="tab-tr" class="tab-content">暂无宝藏</div>
+    </aside>
 
     <main>
-        <div class="card">
-            <h2>位置数据流</h2>
-            <div id="gps-status" class="gps-data">等待 GPS 信号...</div>
+        <header>
+            <div id="player-name-display"><strong>玩家: 未知</strong></div>
+            <div id="connection-status" class="status-badge">离线</div>
+        </header>
+        <div id="text-feed">
+            <div class="msg-bubble sys">等待服务器连接...</div>
         </div>
-
-        <div class="card">
-            <h2>服务器消息</h2>
-            <div id="text-feed"></div>
-            <div id="image-container">
-                <img id="server-image" src="" alt="接收到的地图/图像">
+        
+        <div id="quiz-modal">
+            <div class="quiz-header">
+                <span id="quiz-title">题目</span>
+                <span id="quiz-progress">1 / 1</span>
             </div>
+            <div id="quiz-content" style="margin-bottom: 15px;">题干内容</div>
+            <div id="quiz-options"></div>
+            <button class="quiz-btn" onclick="submitQuiz()">确认提交</button>
         </div>
     </main>
 
     <script>
-        // const WS_URL = 'wss://22720ae7.r39.cpolar.top'; // 替换为你的 cpolar/SakuraFrp 公网 wss 地址
-        const WS_URL = 'wss://44173f43.r39.cpolar.top';
-        // const WS_URL = 'ws://127.0.0.1:8765';
-        const clientId = 'Mobile_' + Math.floor(Math.random() * 10000); 
-        
+        const WS_URL = 'ws://127.0.0.1:8765'; // 本地测试，上线请改回 cpolar 地址
         let ws;
+        let username = "";
         let gpsInterval;
+        let currentQuizId = null;
 
-        const statusBadge = document.getElementById('connection-status');
-        const gpsStatus = document.getElementById('gps-status');
-        const textFeed = document.getElementById('text-feed');
-        const serverImage = document.getElementById('server-image');
+        function startGame() {
+            const input = document.getElementById('username-input').value.trim();
+            if (!input) { alert("用户名不能为空"); return; }
+            username = input;
+            document.getElementById('player-name-display').innerHTML = `<strong>玩家: ${username}</strong>`;
+            document.getElementById('login-overlay').style.display = 'none';
+            connectWebSocket();
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function appendMsg(text, isSys = false) {
+            const feed = document.getElementById('text-feed');
+            const div = document.createElement('div');
+            div.className = 'msg-bubble' + (isSys ? ' sys' : '');
+            div.textContent = text;
+            feed.appendChild(div);
+            feed.scrollTop = feed.scrollHeight;
+        }
 
         function connectWebSocket() {
             ws = new WebSocket(WS_URL);
-
             ws.onopen = () => {
-                statusBadge.textContent = '在线';
-                statusBadge.classList.add('online');
+                document.getElementById('connection-status').textContent = '在线';
+                document.getElementById('connection-status').classList.add('online');
+                appendMsg("✅ 成功连接到服务器！", true);
                 startGPSStream();
             };
 
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    
-                    if (data.text) {
-                        const p = document.createElement('p');
-                        p.textContent = data.text;
-                        textFeed.prepend(p);
-                    }
-                    
-                    if (data.image) {
-                        serverImage.src = data.image.startsWith('data:image') 
-                            ? data.image 
-                            : `data:image/jpeg;base64,${data.image}`;
-                        serverImage.style.display = 'block';
+                    const msgType = data.msg_type || data.type;
+
+                    switch(msgType) {
+                        case 'S2C_TREASURE':
+                            appendMsg(`🎁 获得宝藏: ${data.data.content} (积分+${data.data.score})`);
+                            addToList('tab-tr', data.data.content);
+                            break;
+                        case 'S2C_ACH':
+                            appendMsg(`🎖️ 解锁成就: ${data.data.name} - ${data.data.desc}`);
+                            addToList('tab-ach', `${data.data.name}: ${data.data.desc}`);
+                            break;
+                        case 'RANKING_LIST':
+                            updateRanking(data.data);
+                            break;
+                        case 'QUIZ_DATA':
+                            showQuiz(data.data);
+                            break;
+                        case 'S2C_AREA':
+                            appendMsg(`📍 区域更新: 进入了 [${data.data.area_name}]`);
+                            break;
+                        case 'TEXT_MSG':
+                            appendMsg(`💬 系统: ${data.text}`);
+                            break;
                     }
                 } catch (e) {
-                    console.error("解析消息失败:", e);
+                    console.error("解析失败:", e);
                 }
             };
 
             ws.onclose = () => {
-                statusBadge.textContent = '离线';
-                statusBadge.classList.remove('online');
+                document.getElementById('connection-status').textContent = '离线';
+                document.getElementById('connection-status').classList.remove('online');
                 stopGPSStream();
                 setTimeout(connectWebSocket, 3000);
             };
         }
 
-        function startGPSStream() {
-            if (!navigator.geolocation) {
-                gpsStatus.textContent = "你的浏览器不支持 GPS 定位。";
-                return;
-            }
+        function addToList(tabId, text) {
+            const container = document.getElementById(tabId);
+            if(container.innerText === '暂无数据' || container.innerText === '暂无成就' || container.innerText === '暂无宝藏') container.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.textContent = text;
+            container.appendChild(div);
+        }
 
+        function updateRanking(list) {
+            const container = document.getElementById('tab-rank');
+            container.innerHTML = '';
+            list.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `<strong>Top ${item.rank}</strong>: ${item.uid} (${item.score}分)`;
+                container.appendChild(div);
+            });
+        }
+
+        function showQuiz(quizData) {
+            currentQuizId = quizData.qid;
+            document.getElementById('quiz-title').textContent = "发现题目！";
+            document.getElementById('quiz-progress').textContent = `${quizData.this_num} / ${quizData.total}`;
+            document.getElementById('quiz-content').textContent = quizData.content;
+            
+            const optionsDiv = document.getElementById('quiz-options');
+            optionsDiv.innerHTML = '';
+            quizData.options.forEach((opt, index) => {
+                const label = document.createElement('label');
+                label.className = 'quiz-option';
+                label.innerHTML = `<input type="radio" name="quiz-ans" value="${index}"> ${opt}`;
+                optionsDiv.appendChild(label);
+            });
+            document.getElementById('quiz-modal').style.display = 'block';
+        }
+
+        function submitQuiz() {
+            const selected = document.querySelector('input[name="quiz-ans"]:checked');
+            if (!selected) { alert("请选择一个答案！"); return; }
+            
+            const payload = {
+                uid: username,
+                msg_type: "C2S_QUIZ_RESULT",
+                data: { qid: currentQuizId, is_correct: true, selected_index: parseInt(selected.value) }
+            };
+            ws.send(JSON.stringify(payload));
+            document.getElementById('quiz-modal').style.display = 'none';
+            appendMsg("📝 答案已提交，等待服务器判定...", true);
+        }
+
+        function startGPSStream() {
+            if (!navigator.geolocation) return;
             gpsInterval = setInterval(() => {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const payload = {
-                            client_id: clientId,
-                            type: 'gps',
-                            lat: position.coords.latitude,
-                            lon: position.coords.longitude,
-                            accuracy: position.coords.accuracy
-                        };
-                        gpsStatus.textContent = `Lat: ${payload.lat.toFixed(5)}, Lon: ${payload.lon.toFixed(5)}`;
-                        
-                        if (ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify(payload));
-                        }
-                    },
-                    (error) => {
-                        gpsStatus.textContent = `GPS 错误: ${error.message}`;
-                    },
-                    { enableHighAccuracy: true }
-                );
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    const payload = {
+                        uid: username, msg_type: 'C2S_POS',
+                        data: { x: pos.coords.longitude, y: pos.coords.latitude, acc: pos.coords.accuracy }
+                    };
+                    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
+                }, () => {}, { enableHighAccuracy: true });
             }, 5000);
         }
 
-        function stopGPSStream() {
-            if (gpsInterval) clearInterval(gpsInterval);
-        }
-
-        connectWebSocket();
+        function stopGPSStream() { if (gpsInterval) clearInterval(gpsInterval); }
     </script>
 </body>
 </html>
-
-<!-- python -m http.server 8000 -->
