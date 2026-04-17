@@ -239,29 +239,51 @@
         </div>
     </main>
     <script>
-        const achievementData = {
-            "初出茅庐": "first_answer.png", "宝藏猎人": "first_treasure.png", "知识先锋": "answer_5.png",
-            "学霸附体": "answer_10.png", "答题达人": "answer_20.png", "初露锋芒": "score_start.png",
-            "渐入佳境": "score_10.png", "融会贯通": "score_20.png", "登峰造极": "score_50.png",
-            "榜首荣耀": "rank_first.png", "探索者": "explore_3.png", "地图通": "explore_all.png",
-            "找得着北": "navigation.png", "战火初燃": "pk_first.png", "势如破竹": "pk_win3.png",
-            "横扫千军": "pk_win5.png", "绝地反击": "pk_comeback.png", "人多力量大": "multi_player.png",
-            "宝藏收藏家": "treasure_5.png", "全能冠军": "champion.png"
-        };
-        const treasureData = {
-            "学苑木筷": "1.png", "一朵樱花": "2.png", "测绘馆结构图纸碎片": "3.png", "卷尺": "4.png",
-            "老旧的高数下课本": "5.png", "废弃的校园卡": "6.png", "损坏的鼠标": "7.png", "一包餐巾纸": "8.png",
-            "5kg哑铃": "9.png", "测绘迎新文件袋": "10.png", "脉动": "11.png", "一捆衣架": "12.png",
-            "校徽钥匙扣": "13.png", "测绘院服": "14.png", "猫学长纪念贴纸": "15.png", "校内景观明信片": "16.png",
-            "图书馆模型": "17.png", "校徽胸章": "18.png", "同济纪念外套": "19.png", "家居扫地机": "20.png",
-            "同济玩偶小熊": "21.png", "大疆航拍无人机": "22.png", "都彭打火机": "23.png", "马年纪念币": "24.png",
-            "鎏金卡牌": "25.png", "神奇望远镜": "26.png", "作弊胶囊": "27.png"
-        };
-        const WS_URL = 'wss://43d35652.r39.cpolar.top';  // 8765
+        // 移除硬编码的字典，改为全局空对象，等待 CSV 加载
+        let achievementData = {};
+        let treasureData = {};
+
+        const WS_URL = 'wss://43d35652.r39.cpolar.top';  // 请确保端口和地址正确
         let ws;
         let username = "";
         let gpsInterval;
         let currentQuizId = null;
+        
+        // 全局缺省图片（SVG格式），防止图片 404 导致 UI 崩塌
+        const fallbackSVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='80' height='80' fill='%23f1f5f9' rx='12'/><text x='50%' y='50%' font-size='14' text-anchor='middle' dy='.3em' fill='%2394a3b8'>未发掘</text></svg>";
+
+        // === 新增：CSV 加载与解析函数 ===
+        async function loadCSV(url) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP 错误! 状态码: ${response.status}`);
+                const text = await response.text();
+                
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                const headers = lines[0].split(',').map(h => h.trim());
+                const data = {};
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',').map(v => v.trim());
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        row[header] = values[index];
+                    });
+                    data[row[headers[0]]] = row; // 将第一列（ID）作为字典的 Key
+                }
+                return data;
+            } catch (error) {
+                console.error('加载数据表失败:', url, error);
+                return {};
+            }
+        }
+
+        // 在页面加载时初始化数据表
+        window.onload = async () => {
+            achievementData = await loadCSV('../assets/datatable/achievements.csv');
+            treasureData = await loadCSV('../assets/datatable/treasure.csv');
+            console.log("配置表加载完成:", { achievement: achievementData, treasure: treasureData });
+        };
 
         function startGame() {
             const input = document.getElementById('username-input').value.trim();
@@ -297,19 +319,22 @@
             div.className = 'msg-bubble' + (isSys ? ' sys' : '');
             div.textContent = text;
             feed.appendChild(div);
-            setTimeout(() => {
-                feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
-            }, 50);
+            setTimeout(() => { feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' }); }, 50);
         }
 
         function showAlert(title, text, imgName, isTreasure) {
             const basePath = isTreasure ? '../assets/image/treasure/' : '../assets/image/achievements/';
             document.getElementById('alert-title').textContent = title;
             document.getElementById('alert-content').innerHTML = text.replace(/\n/g, '<br>');
+            
             const imgEl = document.getElementById('alert-img');
             imgEl.style.display = 'block';
-            imgEl.src = basePath + imgName;
-            imgEl.onerror = () => { imgEl.style.display = 'none'; };
+            imgEl.src = (imgName === 'default.png') ? fallbackSVG : (basePath + imgName);
+            imgEl.onerror = function() { 
+                this.onerror = null; 
+                this.src = fallbackSVG; 
+            };
+            
             document.getElementById('modal-overlay').style.display = 'block';
             document.getElementById('alert-modal').style.display = 'block';
         }
@@ -335,25 +360,28 @@
 
                     switch(msgType) {
                         case 'S2C_TREASURE': {
-                            let tContent = data.data.content || "未知宝藏";
-                            let imgT = 'default.png';
-                            let matchedName = tContent;
-                            for (let key in treasureData) {
-                                if (tContent.includes(key)) {
-                                    imgT = treasureData[key];
-                                    matchedName = key;
-                                    break;
-                                }
-                            }
-                            showAlert("💎 发现稀有物资！", `获得了: ${tContent}\n(积分 +${data.data.score})`, imgT, true);
-                            appendMsg(`记录: 获得宝藏 [${tContent}]`, true);
-                            addToGrid('tab-tr-grid', matchedName, `积分+${data.data.score}`, imgT, true);
+                            const trId = data.data.tr_id;
+                            const trInfo = treasureData[trId]; // 根据 ID 查表
+                            
+                            // 优先使用查表结果，若表里没有则降级使用服务端传来的文本
+                            let tName = trInfo ? trInfo.content : (data.data.content || "未知宝藏");
+                            let imgT = trInfo ? trInfo.img_name : 'default.png';
+                            let score = trInfo ? trInfo.Score : (data.data.score || 0);
+
+                            showAlert("💎 发现稀有物资！", `获得了: ${tName}\n(积分 +${score})`, imgT, true);
+                            appendMsg(`记录: 获得宝藏 [${tName}]`, true);
+                            addToGrid('tab-tr-grid', tName, `积分+${score}`, imgT, true);
                             break;
                         }
                         case 'S2C_ACH': {
-                            let aName = (data.data.name || "未知成就").trim();
-                            let aDesc = data.data.desc || "";
-                            let imgA = achievementData[aName] || data.data.img || 'default.png';
+                            // 兼容 v1.5 文档中成就消息 key 名拼写问题 (ach_id 或是 tr_id)
+                            const achId = data.data.ach_id || data.data.tr_id; 
+                            const achInfo = achievementData[achId]; // 根据 ID 查表
+
+                            let aName = achInfo ? achInfo.name : (data.data.name || "未知成就");
+                            let aDesc = achInfo ? achInfo.desc : (data.data.desc || "");
+                            let imgA = achInfo ? achInfo.img_url : 'default.png';
+
                             showAlert("🎖️ 解锁新成就！", `${aName}\n<span style="color:#64748b; font-size:13px;">${aDesc}</span>`, imgA, false);
                             appendMsg(`记录: 达成成就 [${aName}]`, true);
                             addToGrid('tab-ach-grid', aName, aDesc, imgA, false);
@@ -389,11 +417,14 @@
             const container = document.getElementById(gridId);
             const emptyTip = container.querySelector('.empty-tip');
             if(emptyTip) emptyTip.remove(); 
+            
             const basePath = isTreasure ? '../assets/image/treasure/' : '../assets/image/achievements/';
+            const imgSrc = (imgName === 'default.png') ? fallbackSVG : (basePath + imgName);
+            
             const card = document.createElement('div');
             card.className = 'grid-card';
             card.innerHTML = `
-                <img src="${basePath + imgName}" alt="${name}" onerror="this.style.display='none'">
+                <img src="${imgSrc}" alt="${name}" onerror="this.onerror=null; this.src='${fallbackSVG}';">
                 <div class="card-title">${name}</div>
                 <div class="card-desc">${desc}</div>
             `;

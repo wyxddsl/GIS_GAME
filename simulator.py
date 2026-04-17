@@ -21,17 +21,26 @@ async def test_flow_sequence(writer):
     })
     await asyncio.sleep(2)
 
-    # 2. 宝藏推送
+    # 2. 宝藏推送 (测试推一个史诗级宝藏: 26 号 神奇望远镜)
     await send_json(writer, {
         "msg_type": "S2C_TREASURE",
-        "data": { "tr_id": 1, "content": "获得露天宝藏：学苑木筷", "score": 20, "ability": 0 }
+        "data": { 
+            "tr_id": 26, # 对应 treasure.csv 里的神奇望远镜
+            "content": "获得宝藏：神奇望远镜", # 虽然发了文本，但前端会优先查 csv 表
+            "score": 0, 
+            "ability": 1 
+        }
     })
     await asyncio.sleep(2)
 
-    # 3. 成就推送
+    # 3. 成就推送 (约定文档中 S2C_ACH 的数据格式)
     await send_json(writer, {
         "msg_type": "S2C_ACH",
-        "data": { "name": "初出茅庐", "desc": "完成第一次坐标打卡", "img": "first_answer.png" }
+        "data": { 
+            "ach_id": 1, # 对应 achievements.csv 里的初出茅庐
+            "name": "初出茅庐", 
+            "desc": "完成第一道答题，踏上探索之旅" 
+        }
     })
     await asyncio.sleep(2)
 
