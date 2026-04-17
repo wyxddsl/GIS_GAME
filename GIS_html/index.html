@@ -15,9 +15,7 @@
             --sys-bg: #f0f9ff;
             --sys-text: #0369a1;
         }
-        
         * { box-sizing: border-box; }
-        
         body { 
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
             margin: 0; padding: 0; 
@@ -31,8 +29,6 @@
             display: flex; 
             overflow: hidden; 
         }
-        
-        /* 登录遮罩 */
         #login-overlay { 
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
             background: rgba(15, 23, 42, 0.8); 
@@ -57,15 +53,12 @@
             cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; transition: 0.2s;
         }
         .login-box button:active { transform: scale(0.98); }
-
-        /* 滑动侧边栏与遮罩 */
         #sidebar-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.5); z-index: 1000;
             opacity: 0; visibility: hidden; transition: 0.3s;
         }
         #sidebar-overlay.show { opacity: 1; visibility: visible; }
-        
         aside { 
             position: fixed; top: 0; left: -100%; bottom: 0; width: 85%; max-width: 320px; 
             background: var(--surface); display: flex; flex-direction: column; 
@@ -73,7 +66,6 @@
             box-shadow: 4px 0 15px rgba(0,0,0,0.1);
         }
         aside.show { left: 0; }
-        
         .aside-header { 
             padding: 20px 15px; background: #f8fafc; border-bottom: 1px solid var(--border); 
             display: flex; align-items: center; justify-content: space-between;
@@ -83,19 +75,15 @@
             background: #e2e8f0; color: #475569; border: none; width: 32px; height: 32px; 
             border-radius: 50%; cursor: pointer; font-weight: bold; font-size: 16px;
         }
-        
         .tab-btn { 
             padding: 16px 20px; text-align: left; border: none; background: none; 
             border-bottom: 1px solid var(--border); cursor: pointer; font-size: 15px; font-weight: 600; 
             color: #475569; transition: 0.2s;
         }
         .tab-btn:hover, .tab-btn.active { background: #f0f9ff; color: var(--primary-dark); padding-left: 25px; border-left: 4px solid var(--primary);}
-        
-        /* 修复：将 display: grid 从外层容器剥离，防止与 display:none 冲突 */
         .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; background: #f8fafc;}
         .tab-content.active { display: block; }
         .empty-tip { text-align: center; color: #94a3b8; margin-top: 50px; font-size: 14px; grid-column: 1 / -1;}
-
         .grid-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
@@ -112,8 +100,6 @@
         }
         .grid-card .card-title { font-size: 13px; font-weight: bold; color: var(--text); margin-bottom: 4px;}
         .grid-card .card-desc { font-size: 11px; color: #64748b; line-height: 1.3;}
-
-        /* 排行榜样式 */
         .rank-item {
             display: flex; align-items: center; background: white; padding: 12px 15px;
             border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -121,8 +107,6 @@
         .rank-medal { font-size: 20px; margin-right: 12px; width: 25px; text-align: center;}
         .rank-name { flex: 1; font-weight: bold; color: #334155; font-size: 15px;}
         .rank-score { font-weight: bold; color: var(--primary); font-size: 14px;}
-
-        /* 主体内容区 */
         main { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; }
         header { 
             background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
@@ -130,7 +114,6 @@
             display: flex; justify-content: space-between; align-items: center; 
             box-shadow: 0 2px 10px rgba(0,0,0,0.03); z-index: 10;
         }
-        
         .header-left { display: flex; align-items: center; gap: 12px; }
         .hamburger { 
             background: var(--bg); border: none; font-size: 18px; width: 36px; height: 36px;
@@ -138,16 +121,13 @@
             display: flex; justify-content: center; align-items: center;
         }
         #player-name-display { font-size: 16px; color: #334155;}
-        
         .status-badge { 
             padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: bold; 
             background: #ef4444; color: white; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
         }
         .status-badge.online { background: #10b981; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);}
-        
-        /* 聊天/事件瀑布流 */
         #text-feed { 
-            flex: 1; padding: 20px; padding-bottom: 60px; /* 加大底部留白，防遮挡 */
+            flex: 1; padding: 20px; padding-bottom: 60px; 
             overflow-y: auto; display: flex; flex-direction: column; gap: 12px; 
             scroll-behavior: smooth;
         }
@@ -161,19 +141,14 @@
             border-radius: 12px; align-self: center; text-align: center; font-weight: 500;
             border-bottom-left-radius: 12px; max-width: 90%;
         }
-
         @keyframes popIn {
             0% { opacity: 0; transform: translateY(15px) scale(0.95); }
             100% { opacity: 1; transform: translateY(0) scale(1); }
         }
-
-        /* 统一的半透明遮罩 */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6);
             backdrop-filter: blur(3px); z-index: 100; display: none;
         }
-
-        /* 答题卡片与提示卡片共用部分样式 */
         .modal-box { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             background: white; width: 85%; max-width: 400px; padding: 25px; 
@@ -192,14 +167,11 @@
         }
         .quiz-option:hover { background: #f0f9ff; border-color: #bae6fd; }
         .quiz-option input { margin-right: 10px; transform: scale(1.2); cursor: pointer;}
-        
         .quiz-btn { 
             width: 100%; background: linear-gradient(to right, #0ea5e9, #0284c7); 
             color: white; border: none; padding: 14px; border-radius: 8px; 
             margin-top: 20px; cursor: pointer; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(14, 165, 233, 0.2);
         }
-
-        /* 专门针对成就/宝藏的弹窗内容样式 */
         #alert-modal { text-align: center; }
         #alert-img { 
             width: 100px; height: 100px; object-fit: contain; margin: 0 auto 15px; 
@@ -207,11 +179,9 @@
         }
         #alert-content { font-size: 15px; color: #334155; line-height: 1.6; font-weight: bold;}
         .alert-title-center { text-align: center; width: 100%; display: block; color: var(--primary-dark); font-size: 20px;}
-
     </style>
 </head>
 <body>
-
     <div id="login-overlay">
         <div class="login-box">
             <h2>🕹️ 冯永玖行动</h2>
@@ -219,7 +189,6 @@
             <button onclick="startGame()">建立神经连接</button>
         </div>
     </div>
-
     <div id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
     <aside id="sidebar">
         <div class="aside-header">
@@ -229,7 +198,6 @@
         <button class="tab-btn active" onclick="switchTab('tab-rank', this)">🏆 积分风云榜</button>
         <button class="tab-btn" onclick="switchTab('tab-ach', this)">🎖️ 荣誉成就</button>
         <button class="tab-btn" onclick="switchTab('tab-tr', this)">💎 收集宝藏</button>
-        
         <div id="tab-rank" class="tab-content active">
             <div class="empty-tip">暂无排名数据</div>
         </div>
@@ -240,7 +208,6 @@
             <div id="tab-tr-grid" class="grid-container"><div class="empty-tip">暂无宝藏</div></div>
         </div>
     </aside>
-
     <main id="main-view">
         <header>
             <div class="header-left">
@@ -249,13 +216,10 @@
             </div>
             <div id="connection-status" class="status-badge">信号断开</div>
         </header>
-        
         <div id="text-feed">
             <div class="msg-bubble sys">正在等待服务器建立连接...</div>
         </div>
-        
         <div id="modal-overlay" class="modal-overlay"></div>
-        
         <div id="quiz-modal" class="modal-box">
             <div class="quiz-header">
                 <span>📡 突发事件！</span>
@@ -265,7 +229,6 @@
             <div id="quiz-options"></div>
             <button class="quiz-btn" onclick="submitQuiz()">上传答案</button>
         </div>
-
         <div id="alert-modal" class="modal-box">
             <div class="quiz-header" style="justify-content: center;">
                 <span id="alert-title" class="alert-title-center">提示</span>
@@ -275,9 +238,7 @@
             <button class="quiz-btn" onclick="closeAlert()">确 认</button>
         </div>
     </main>
-
     <script>
-        // 游戏内置数据字典
         const achievementData = {
             "初出茅庐": "first_answer.png", "宝藏猎人": "first_treasure.png", "知识先锋": "answer_5.png",
             "学霸附体": "answer_10.png", "答题达人": "answer_20.png", "初露锋芒": "score_start.png",
@@ -287,7 +248,6 @@
             "横扫千军": "pk_win5.png", "绝地反击": "pk_comeback.png", "人多力量大": "multi_player.png",
             "宝藏收藏家": "treasure_5.png", "全能冠军": "champion.png"
         };
-
         const treasureData = {
             "学苑木筷": "1.png", "一朵樱花": "2.png", "测绘馆结构图纸碎片": "3.png", "卷尺": "4.png",
             "老旧的高数下课本": "5.png", "废弃的校园卡": "6.png", "损坏的鼠标": "7.png", "一包餐巾纸": "8.png",
@@ -297,8 +257,7 @@
             "同济玩偶小熊": "21.png", "大疆航拍无人机": "22.png", "都彭打火机": "23.png", "马年纪念币": "24.png",
             "鎏金卡牌": "25.png", "神奇望远镜": "26.png", "作弊胶囊": "27.png"
         };
-
-        const WS_URL = 'wss://5605557b.r39.cpolar.top'; 
+        const WS_URL = 'wss://43d35652.r39.cpolar.top';  // 8765
         let ws;
         let username = "";
         let gpsInterval;
@@ -332,26 +291,25 @@
             btnElement.classList.add('active');
         }
 
-        // 修复：加入 setTimeout 等待渲染完成再滚动，保证底部最新消息可见
         function appendMsg(text, isSys = false) {
             const feed = document.getElementById('text-feed');
             const div = document.createElement('div');
             div.className = 'msg-bubble' + (isSys ? ' sys' : '');
             div.textContent = text;
             feed.appendChild(div);
-            
             setTimeout(() => {
                 feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
             }, 50);
         }
 
-        // 新增：触发成就/宝藏等弹窗的函数
         function showAlert(title, text, imgName, isTreasure) {
             const basePath = isTreasure ? '../assets/image/treasure/' : '../assets/image/achievements/';
             document.getElementById('alert-title').textContent = title;
-            document.getElementById('alert-content').innerHTML = text.replace('\n', '<br>');
-            document.getElementById('alert-img').src = basePath + imgName;
-            
+            document.getElementById('alert-content').innerHTML = text.replace(/\n/g, '<br>');
+            const imgEl = document.getElementById('alert-img');
+            imgEl.style.display = 'block';
+            imgEl.src = basePath + imgName;
+            imgEl.onerror = () => { imgEl.style.display = 'none'; };
             document.getElementById('modal-overlay').style.display = 'block';
             document.getElementById('alert-modal').style.display = 'block';
         }
@@ -376,27 +334,31 @@
                     const msgType = data.msg_type || data.type;
 
                     switch(msgType) {
-                        case 'S2C_TREASURE':
-                            const tName = data.data.content;
-                            const imgT = treasureData[tName] || 'default.png';
-                            // 改为弹窗提示
-                            showAlert("💎 发现稀有物资！", `获得了: ${tName}\n(积分 +${data.data.score})`, imgT, true);
-                            // 后台静默加入记录
-                            appendMsg(`记录: 获得宝藏 [${tName}]`, true);
-                            addToGrid('tab-tr-grid', tName, `积分+${data.data.score}`, imgT, true);
+                        case 'S2C_TREASURE': {
+                            let tContent = data.data.content || "未知宝藏";
+                            let imgT = 'default.png';
+                            let matchedName = tContent;
+                            for (let key in treasureData) {
+                                if (tContent.includes(key)) {
+                                    imgT = treasureData[key];
+                                    matchedName = key;
+                                    break;
+                                }
+                            }
+                            showAlert("💎 发现稀有物资！", `获得了: ${tContent}\n(积分 +${data.data.score})`, imgT, true);
+                            appendMsg(`记录: 获得宝藏 [${tContent}]`, true);
+                            addToGrid('tab-tr-grid', matchedName, `积分+${data.data.score}`, imgT, true);
                             break;
-                            
-                        case 'S2C_ACH':
-                            const aName = data.data.name;
-                            const aDesc = data.data.desc;
-                            const imgA = achievementData[aName] || 'default.png';
-                            // 改为弹窗提示
+                        }
+                        case 'S2C_ACH': {
+                            let aName = (data.data.name || "未知成就").trim();
+                            let aDesc = data.data.desc || "";
+                            let imgA = achievementData[aName] || data.data.img || 'default.png';
                             showAlert("🎖️ 解锁新成就！", `${aName}\n<span style="color:#64748b; font-size:13px;">${aDesc}</span>`, imgA, false);
-                            // 后台静默加入记录
                             appendMsg(`记录: 达成成就 [${aName}]`, true);
                             addToGrid('tab-ach-grid', aName, aDesc, imgA, false);
                             break;
-                            
+                        }
                         case 'RANKING_LIST':
                             updateRanking(data.data);
                             break;
@@ -411,7 +373,7 @@
                             break;
                     }
                 } catch (e) {
-                    console.error("解析通信数据失败:", e);
+                    console.error(e);
                 }
             };
 
@@ -427,15 +389,11 @@
             const container = document.getElementById(gridId);
             const emptyTip = container.querySelector('.empty-tip');
             if(emptyTip) emptyTip.remove(); 
-            
             const basePath = isTreasure ? '../assets/image/treasure/' : '../assets/image/achievements/';
-            const imgSrc = basePath + imgName;
-
             const card = document.createElement('div');
             card.className = 'grid-card';
-            // 加入 onError 处理确保图片路径错误时有备用显示
             card.innerHTML = `
-                <img src="${imgSrc}" alt="${name}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'50\\' height=\\'50\\'><rect width=\\'50\\' height=\\'50\\' fill=\\'%23e2e8f0\\'/><text x=\\'50%\\' y=\\'50%\\' font-size=\\'12\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%2364748b\\'>?</text></svg>'">
+                <img src="${basePath + imgName}" alt="${name}" onerror="this.style.display='none'">
                 <div class="card-title">${name}</div>
                 <div class="card-desc">${desc}</div>
             `;
@@ -466,7 +424,6 @@
             currentQuizId = quizData.qid;
             document.getElementById('quiz-progress').textContent = `${quizData.this_num} / ${quizData.total}`;
             document.getElementById('quiz-content').textContent = quizData.content;
-            
             const optionsDiv = document.getElementById('quiz-options');
             optionsDiv.innerHTML = '';
             quizData.options.forEach((opt, index) => {
@@ -482,14 +439,12 @@
         function submitQuiz() {
             const selected = document.querySelector('input[name="quiz-ans"]:checked');
             if (!selected) { alert("干员，请先选择一个选项！"); return; }
-            
             const payload = {
                 uid: username,
                 msg_type: "C2S_QUIZ_RESULT",
                 data: { qid: currentQuizId, is_correct: true, selected_index: parseInt(selected.value) }
             };
             ws.send(JSON.stringify(payload));
-            
             document.getElementById('modal-overlay').style.display = 'none';
             document.getElementById('quiz-modal').style.display = 'none';
             appendMsg("📝 答题数据已上传，等待主脑判定...", true);
