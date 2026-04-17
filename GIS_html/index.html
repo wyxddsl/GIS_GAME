@@ -239,51 +239,91 @@
         </div>
     </main>
     <script>
-        // 移除硬编码的字典，改为全局空对象，等待 CSV 加载
-        let achievementData = {};
-        let treasureData = {};
-
-        const WS_URL = 'wss://43d35652.r39.cpolar.top';  // 请确保端口和地址正确
+const fallbackImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc4MCcgaGVpZ2h0PSc4MCc+PHJlY3Qgd2lkdGg9JzgwJyBoZWlnaHQ9JzgwJyBmaWxsPScjZjFmNWY5JyByeD0nMTInLz48dGV4dCB4PSc1MCUnIHk9JzUwJScgZm9udC1zaXplPScxNCcgdGV4dC1hbmNob3I9J21pZGRsZScgZHk9Jy4zZW0nIGZpbGw9JyM5NGEzYjgnPj88L3RleHQ+PC9zdmc+";
+        
+        const WS_URL = 'wss://43d35652.r39.cpolar.top'; // 你的 WebSocket 隧道
         let ws;
         let username = "";
         let gpsInterval;
         let currentQuizId = null;
+        let achievementData = {};
+        let treasureData = {};
         
-        // 全局缺省图片（SVG格式），防止图片 404 导致 UI 崩塌
-        const fallbackSVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='80' height='80' fill='%23f1f5f9' rx='12'/><text x='50%' y='50%' font-size='14' text-anchor='middle' dy='.3em' fill='%2394a3b8'>未发掘</text></svg>";
+        // 记录最后试探成功的路径前缀
+        let validAssetPrefix = '../assets/'; 
 
-        // === 新增：CSV 加载与解析函数 ===
-        async function loadCSV(url) {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP 错误! 状态码: ${response.status}`);
-                const text = await response.text();
-                
-                const lines = text.split('\n').filter(line => line.trim() !== '');
-                const headers = lines[0].split(',').map(h => h.trim());
-                const data = {};
-                
-                for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',').map(v => v.trim());
-                    const row = {};
-                    headers.forEach((header, index) => {
-                        row[header] = values[index];
-                    });
-                    data[row[headers[0]]] = row; // 将第一列（ID）作为字典的 Key
+        // 🌟 核心：带诊断雷达的 CSV 加载器
+        async function loadAndParseCSV(subPath) {
+            // 依次尝试三种可能存在的服务器路径结构
+            const pathsToTry = [
+                `../assets/${subPath}`,      // 标准相对路径 (绝大多数情况适用)
+                `/assets/${subPath}`,        // 绝对路径 (Cpolar 根目录映射适用)
+                `./assets/${subPath}`        // 当前目录包含 assets 的情况
+            ];
+
+            let lastErrorCode = "未知";
+
+            for (let path of pathsToTry) {
+                try {
+                    const url = `${path}?t=${Date.now()}`;
+                    const res = await fetch(url);
+                    
+                    if (res.ok) {
+                        // 命中正确路径！记录下来给图片使用
+                        validAssetPrefix = path.replace(subPath, '');
+                        
+                        let text = await res.text();
+                        text = text.replace(/^\uFEFF/, ''); 
+                        const lines = text.split('\n').filter(l => l.trim() !== '');
+                        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                        
+                        const nameCol = headers.findIndex(h => h.includes('name') || h.includes('desc') || h.includes('content'));
+                        const imgCol = headers.findIndex(h => h.includes('img') || h.includes('url') || h.includes('pic'));
+
+                        const map = {};
+                        for(let i = 1; i < lines.length; i++) {
+                            const row = lines[i].split(',').map(v => v.trim());
+                            if(row[0]) {
+                                map[row[0].toString()] = {
+                                    name: nameCol !== -1 ? row[nameCol] : "未知",
+                                    img: imgCol !== -1 ? row[imgCol] : "default.png"
+                                };
+                            }
+                        }
+                        return map;
+                    } else {
+                        lastErrorCode = `HTTP ${res.status} (例如404就是文件未放在正确位置)`;
+                    }
+                } catch (e) {
+                    lastErrorCode = "跨域拦截或网络断开";
                 }
-                return data;
-            } catch (error) {
-                console.error('加载数据表失败:', url, error);
-                return {};
             }
+            
+            // 如果三种路径全军覆没，打印诊断信息
+            appendMsg(`❌ 雷达警告: [${subPath}] 拉取失败！`, true);
+            appendMsg(`🔍 诊断原因: ${lastErrorCode}`, true);
+            return null;
         }
 
-        // 在页面加载时初始化数据表
         window.onload = async () => {
-            achievementData = await loadCSV('../assets/datatable/achievements.csv');
-            treasureData = await loadCSV('../assets/datatable/treasure.csv');
-            console.log("配置表加载完成:", { achievement: achievementData, treasure: treasureData });
+            appendMsg("🔄 正在扫描并挂载云端数据表...", true);
+            const achMap = await loadAndParseCSV('datatable/achievements.csv');
+            const trMap = await loadAndParseCSV('datatable/treasure.csv');
+            
+            if (!achMap || !trMap) {
+                alert("云端资源表拉取彻底失败！\n请查看游戏界面的【诊断原因】提示！");
+            } else {
+                achievementData = achMap;
+                treasureData = trMap;
+                appendMsg(`✅ 资源同步完毕！当前挂载路径: ${validAssetPrefix}`, true);
+            }
         };
+
+        function getImagePath(imgName, isTreasure) {
+            if (!imgName || imgName === 'default.png') return fallbackImg;
+            const folder = isTreasure ? 'image/treasure/' : 'image/achievements/';
+            return validAssetPrefix + folder + imgName;
+        }
 
         function startGame() {
             const input = document.getElementById('username-input').value.trim();
@@ -323,18 +363,15 @@
         }
 
         function showAlert(title, text, imgName, isTreasure) {
-            const basePath = isTreasure ? '../assets/image/treasure/' : '../assets/image/achievements/';
             document.getElementById('alert-title').textContent = title;
             document.getElementById('alert-content').innerHTML = text.replace(/\n/g, '<br>');
-            
             const imgEl = document.getElementById('alert-img');
             imgEl.style.display = 'block';
-            imgEl.src = (imgName === 'default.png') ? fallbackSVG : (basePath + imgName);
-            imgEl.onerror = function() { 
-                this.onerror = null; 
-                this.src = fallbackSVG; 
+            imgEl.onerror = function() {
+                this.onerror = null;
+                this.src = fallbackImg;
             };
-            
+            imgEl.src = getImagePath(imgName, isTreasure);
             document.getElementById('modal-overlay').style.display = 'block';
             document.getElementById('alert-modal').style.display = 'block';
         }
@@ -342,6 +379,22 @@
         function closeAlert() {
             document.getElementById('modal-overlay').style.display = 'none';
             document.getElementById('alert-modal').style.display = 'none';
+        }
+
+        function addToGrid(gridId, name, desc, imgName, isTreasure) {
+            const container = document.getElementById(gridId);
+            const emptyTip = container.querySelector('.empty-tip');
+            if(emptyTip) emptyTip.remove();
+            
+            const imgSrc = getImagePath(imgName, isTreasure);
+            const card = document.createElement('div');
+            card.className = 'grid-card';
+            card.innerHTML = `
+                <img src="${imgSrc}" alt="${name}" onerror="this.onerror=null; this.src='${fallbackImg}';">
+                <div class="card-title">${name}</div>
+                <div class="card-desc">${desc}</div>
+            `;
+            container.appendChild(card);
         }
 
         function connectWebSocket() {
@@ -360,31 +413,21 @@
 
                     switch(msgType) {
                         case 'S2C_TREASURE': {
-                            const trId = data.data.tr_id;
-                            const trInfo = treasureData[trId]; // 根据 ID 查表
-                            
-                            // 优先使用查表结果，若表里没有则降级使用服务端传来的文本
-                            let tName = trInfo ? trInfo.content : (data.data.content || "未知宝藏");
-                            let imgT = trInfo ? trInfo.img_name : 'default.png';
-                            let score = trInfo ? trInfo.Score : (data.data.score || 0);
-
-                            showAlert("💎 发现稀有物资！", `获得了: ${tName}\n(积分 +${score})`, imgT, true);
-                            appendMsg(`记录: 获得宝藏 [${tName}]`, true);
-                            addToGrid('tab-tr-grid', tName, `积分+${score}`, imgT, true);
+                            const trId = String(data.data.tr_id || "");
+                            const info = treasureData[trId] || { name: data.data.content || "未知物资", img: "default.png" };
+                            const score = data.data.score || 0;
+                            showAlert("💎 发现稀有物资！", `获得了: ${info.name}\n(积分 +${score})`, info.img, true);
+                            appendMsg(`记录: 获得宝藏 [${info.name}]`, true);
+                            addToGrid('tab-tr-grid', info.name, `积分+${score}`, info.img, true);
                             break;
                         }
                         case 'S2C_ACH': {
-                            // 兼容 v1.5 文档中成就消息 key 名拼写问题 (ach_id 或是 tr_id)
-                            const achId = data.data.ach_id || data.data.tr_id; 
-                            const achInfo = achievementData[achId]; // 根据 ID 查表
-
-                            let aName = achInfo ? achInfo.name : (data.data.name || "未知成就");
-                            let aDesc = achInfo ? achInfo.desc : (data.data.desc || "");
-                            let imgA = achInfo ? achInfo.img_url : 'default.png';
-
-                            showAlert("🎖️ 解锁新成就！", `${aName}\n<span style="color:#64748b; font-size:13px;">${aDesc}</span>`, imgA, false);
-                            appendMsg(`记录: 达成成就 [${aName}]`, true);
-                            addToGrid('tab-ach-grid', aName, aDesc, imgA, false);
+                            const achId = String(data.data.ach_id || data.data.tr_id || "");
+                            const info = achievementData[achId] || { name: data.data.name || "隐藏成就", img: "default.png" };
+                            const desc = data.data.desc || "";
+                            showAlert("🎖️ 解锁新成就！", `${info.name}\n<span style="color:#64748b; font-size:13px;">${desc}</span>`, info.img, false);
+                            appendMsg(`记录: 达成成就 [${info.name}]`, true);
+                            addToGrid('tab-ach-grid', info.name, desc, info.img, false);
                             break;
                         }
                         case 'RANKING_LIST':
@@ -401,7 +444,6 @@
                             break;
                     }
                 } catch (e) {
-                    console.error(e);
                 }
             };
 
@@ -411,24 +453,6 @@
                 stopGPSStream();
                 setTimeout(connectWebSocket, 3000);
             };
-        }
-
-        function addToGrid(gridId, name, desc, imgName, isTreasure) {
-            const container = document.getElementById(gridId);
-            const emptyTip = container.querySelector('.empty-tip');
-            if(emptyTip) emptyTip.remove(); 
-            
-            const basePath = isTreasure ? '../assets/image/treasure/' : '../assets/image/achievements/';
-            const imgSrc = (imgName === 'default.png') ? fallbackSVG : (basePath + imgName);
-            
-            const card = document.createElement('div');
-            card.className = 'grid-card';
-            card.innerHTML = `
-                <img src="${imgSrc}" alt="${name}" onerror="this.onerror=null; this.src='${fallbackSVG}';">
-                <div class="card-title">${name}</div>
-                <div class="card-desc">${desc}</div>
-            `;
-            container.appendChild(card);
         }
 
         function updateRanking(list) {

@@ -18,14 +18,11 @@ start powershell -ExecutionPolicy ByPass -NoExit -Command "& '%CONDA_HOOK%'; con
 timeout /t 2 /nobreak > nul
 
 echo [3/3] 正在启动前端 Web 服务...
-start powershell -WindowStyle Hidden -ExecutionPolicy ByPass -Command "& '%CONDA_HOOK%'; conda activate GPS; cd '%~dp0GIS_html'; python -m http.server 8000"
+:: 【关键修复】：去掉了路径里的 GIS_html，让服务器真正涵盖整个项目包含 assets
+start powershell -WindowStyle Hidden -ExecutionPolicy ByPass -Command "& '%CONDA_HOOK%'; conda activate GPS; cd '%~dp0'; python -m http.server 8000"
 
 timeout /t 2 /nobreak > nul
 
 echo 🚀 所有服务已启动！正在打开浏览器...
-:: 打开 GM 界面
-start http://127.0.0.1:8000/gm.html
-:: 打开 玩家 界面
-start http://127.0.0.1:8000/index.html
-
-exit
+:: 【关键修复】：由于服务器起点变高了，访问网页时需要带上 /GIS_html/
+start http://127.0.0.1:8000/GIS_html/gm.html
