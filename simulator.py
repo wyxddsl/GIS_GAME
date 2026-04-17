@@ -24,14 +24,14 @@ async def test_flow_sequence(writer):
     # 2. 宝藏推送
     await send_json(writer, {
         "msg_type": "S2C_TREASURE",
-        "data": { "tr_id": 505, "content": "获得露天宝藏：神秘的测绘仪器", "score": 20, "ability": 0 }
+        "data": { "tr_id": 1, "content": "获得露天宝藏：学苑木筷", "score": 20, "ability": 0 }
     })
     await asyncio.sleep(2)
 
     # 3. 成就推送
     await send_json(writer, {
         "msg_type": "S2C_ACH",
-        "data": { "name": "初出茅庐", "desc": "完成第一次坐标打卡", "img": "ach01.png" }
+        "data": { "name": "初出茅庐", "desc": "完成第一次坐标打卡", "img": "first_answer.png" }
     })
     await asyncio.sleep(2)
 
