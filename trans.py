@@ -3,7 +3,9 @@ import websockets
 import json
 import logging
 import sys
-
+import io
+# Python 控制台输出 UTF-8，防止控制台打印出乱码
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 # 配置日志输出格式
 logging.basicConfig(
     level=logging.INFO, 

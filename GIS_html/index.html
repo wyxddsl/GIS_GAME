@@ -198,6 +198,8 @@
         <button class="tab-btn active" onclick="switchTab('tab-rank', this)">🏆 积分风云榜</button>
         <button class="tab-btn" onclick="switchTab('tab-ach', this)">🎖️ 荣誉成就</button>
         <button class="tab-btn" onclick="switchTab('tab-tr', this)">💎 收集宝藏</button>
+        <button class="tab-btn" onclick="switchTab('tab-skill', this)">🎒 专属技能</button>
+
         <div id="tab-rank" class="tab-content active">
             <div class="empty-tip">暂无排名数据</div>
         </div>
@@ -206,6 +208,9 @@
         </div>
         <div id="tab-tr" class="tab-content">
             <div id="tab-tr-grid" class="grid-container"><div class="empty-tip">暂无宝藏</div></div>
+        </div>
+        <div id="tab-skill" class="tab-content">
+            <div id="tab-skill-grid" class="grid-container"><div class="empty-tip">暂无可用技能</div></div>
         </div>
     </aside>
     <main id="main-view">
@@ -416,9 +421,17 @@ const fallbackImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53M
                             const trId = String(data.data.tr_id || "");
                             const info = treasureData[trId] || { name: data.data.content || "未知物资", img: "default.png" };
                             const score = data.data.score || 0;
+                            const ability = data.data.ability || 0; // 【新增】读取技能标识
+
                             showAlert("💎 发现稀有物资！", `获得了: ${info.name}\n(积分 +${score})`, info.img, true);
                             appendMsg(`记录: 获得宝藏 [${info.name}]`, true);
                             addToGrid('tab-tr-grid', info.name, `积分+${score}`, info.img, true);
+                            
+                            // 【新增】如果是技能宝藏，则添加到技能库
+                            if (ability > 0) {
+                                addSkillToUI(trId, info.name, info.img, ability);
+                                appendMsg(`⚡ 技能库已更新，获得了可主动触发的技能！`, true);
+                            }
                             break;
                         }
                         case 'S2C_ACH': {
@@ -505,20 +518,77 @@ const fallbackImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53M
             appendMsg("📝 答题数据已上传，等待主脑判定...", true);
         }
 
-        function startGPSStream() {
-            if (!navigator.geolocation) return;
-            gpsInterval = setInterval(() => {
-                navigator.geolocation.getCurrentPosition((pos) => {
-                    const payload = {
-                        uid: username, msg_type: 'C2S_POS',
-                        data: { x: pos.coords.longitude, y: pos.coords.latitude, acc: pos.coords.accuracy }
-                    };
-                    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(payload));
-                }, () => {}, { enableHighAccuracy: true });
-            }, 5000);
+        // 【新增】生成技能按钮的逻辑
+        function addSkillToUI(trId, name, imgName, ability) {
+            const container = document.getElementById('tab-skill-grid');
+            const emptyTip = container.querySelector('.empty-tip');
+            if(emptyTip) emptyTip.remove();
+
+            const imgSrc = getImagePath(imgName, true);
+            const card = document.createElement('div');
+            card.className = 'grid-card';
+            // 绘制UI并附带一个使用按钮
+            card.innerHTML = `
+                <img src="${imgSrc}" alt="${name}" onerror="this.onerror=null; this.src='${fallbackImg}';">
+                <div class="card-title">${name}</div>
+                <button style="margin-top:6px; padding:6px; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer; font-size:12px; width:90%; font-weight:bold;" 
+                        onclick="useSkill('${trId}', ${ability}, this)">立即使用</button>
+            `;
+            container.appendChild(card);
         }
 
-        function stopGPSStream() { if (gpsInterval) clearInterval(gpsInterval); }
+        // 【新增】点击使用技能的逻辑，向C#服务器发送 C2S_USE_TR 指令
+        window.useSkill = function(trId, ability, btnEl) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert("当前信号丢失，无法发动技能！"); return;
+            }
+            const payload = {
+                uid: username,
+                msg_type: "C2S_USE_TR",
+                data: { tr_id: trId, ability: ability }
+            };
+            ws.send(JSON.stringify(payload));
+            appendMsg(`⚡ 发动了技能模块: ${name}`, true);
+            
+            // 如果技能是一次性的，使用后禁用按钮
+            btnEl.disabled = true;
+            btnEl.style.background = '#94a3b8';
+            btnEl.innerText = '已释放';
+        };
+
+        // 使用 HTML5 连续追踪 API，极大提高精度并降低漂移
+        function startGPSStream() {
+            if (!navigator.geolocation) {
+                alert("你的设备不支持定位功能！");
+                return;
+            }
+            
+            // 使用 watchPosition 替代 setInterval，硬件会锁定卫星信号保持高精度
+            gpsInterval = navigator.geolocation.watchPosition(
+                (pos) => {
+                    const payload = {
+                        uid: username, 
+                        msg_type: 'C2S_POS',
+                        data: { x: pos.coords.longitude, y: pos.coords.latitude, acc: pos.coords.accuracy }
+                    };
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify(payload));
+                    }
+                }, 
+                (err) => { console.warn("GPS 获取受阻: ", err); }, 
+                { 
+                    enableHighAccuracy: true, // 强制启用高精度GPS芯片
+                    maximumAge: 0,            // 拒绝缓存，强制取当前最新的真实坐标
+                    timeout: 10000            // 超时限制
+                }
+            );
+        }
+
+        function stopGPSStream() { 
+            if (gpsInterval) {
+                navigator.geolocation.clearWatch(gpsInterval); 
+            }
+        }
     </script>
 </body>
 </html>
