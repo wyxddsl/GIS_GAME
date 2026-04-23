@@ -1,9 +1,0 @@
-D:\外挂\淘宝\游戏\gis小组项目 (2)\gis小组项目\GISGameFramework.Core\bin\Debug\GISGameFramework.Core.dll
-D:\外挂\淘宝\游戏\gis小组项目 (2)\gis小组项目\GISGameFramework.Core\bin\Debug\GISGameFramework.Core.pdb
-D:\外挂\淘宝\游戏\gis小组项目 (2)\gis小组项目\GISGameFramework.Core\obj\Debug\GISGameFramework.Core.dll
-D:\外挂\淘宝\游戏\gis小组项目 (2)\gis小组项目\GISGameFramework.Core\obj\Debug\GISGameFramework.Core.pdb
-D:\外挂\code-all-other\gis小组项目\GISGameFramework.Core\bin\Debug\GISGameFramework.Core.dll
-D:\外挂\code-all-other\gis小组项目\GISGameFramework.Core\bin\Debug\GISGameFramework.Core.pdb
-D:\外挂\code-all-other\gis小组项目\GISGameFramework.Core\obj\Debug\GISGameFramework.Core.dll
-D:\外挂\code-all-other\gis小组项目\GISGameFramework.Core\obj\Debug\GISGameFramework.Core.pdb
-D:\外挂\code-all-other\gis小组项目\GISGameFramework.Core\obj\Debug\GISGameFramework.Core.csprojResolveAssemblyReference.cache
